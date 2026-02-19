@@ -539,7 +539,7 @@ taskId = 160
       "general": {
         "email": null,
         "phone": null,
-        "wallet": "wanyi0830@yahoo.com"
+        "wallet": "redacted-email@example.com"
       },
       "social": {
         "x": null,
@@ -548,7 +548,7 @@ taskId = 160
         "instagram": null,
         "tikTok": null,
         "lineId": null,
-        "discord": "wanyi0730",
+        "discord": "redacted-user",
         "userDefined": null
       }
     },
