@@ -4,13 +4,17 @@ This file provides guidance to Claude Code when working with the ListenME MCP Se
 
 ## Project Overview
 
+**npm package:** [`@boxverse_ai/listenme-mcp-server`](https://www.npmjs.com/package/@boxverse_ai/listenme-mcp-server) (v0.1.1)
+
 A standalone MCP (Model Context Protocol) server that exposes Boxverse AI ListenME product research task management as 19 MCP tools, enabling AI agents (Claude Desktop, Cursor, etc.) to programmatically manage ListenME tasks and analyze feedback.
 
 ## Architecture
 
 - **Runtime:** Node.js / Bun with TypeScript
 - **Protocol:** MCP (stdio + SSE transport)
-- **Dependencies:** `@modelcontextprotocol/sdk`, `zod`
+- **Build:** `bun build` produces a single-file bundle `dist/server.js` (zero runtime deps)
+- **Types:** `tsc --project tsconfig.build.json` emits `.d.ts` files to `dist/types/`
+- **Dev dependencies:** `@modelcontextprotocol/sdk`, `zod`, `typescript`
 - **Two API backends:**
   - Wallet API (`api-wallet.boxtradex.io/wallet`) — Task CRUD and operations
   - AI API (`api-ai.boxtradex.io/ai`) — Feedback data and analysis
@@ -19,21 +23,25 @@ A standalone MCP (Model Context Protocol) server that exposes Boxverse AI Listen
 
 ```
 listenme-mcp-server/
-├── package.json
-├── tsconfig.json
+├── package.json              # @boxverse_ai/listenme-mcp-server
+├── tsconfig.json             # Dev/type-check config
+├── tsconfig.build.json       # Declarations-only build config (dist/types/)
 ├── .env.example
+├── .gitignore
+├── LICENSE                   # MIT
+├── README.md                 # User-facing package docs
 ├── src/
-│   ├── index.ts                  # Entry point (stdio + SSE transport)
+│   ├── index.ts              # Entry point (CLI subcommands, stdio + SSE transport)
 │   ├── auth/
-│   │   ├── config.ts             # Config loader (env vars + ~/.listenme/config.json)
-│   │   └── client.ts             # HTTP client with API signing
+│   │   ├── config.ts         # Config loader (env vars + ~/.listenme/config.json) + initConfig()
+│   │   └── client.ts         # HTTP client with API signing
 │   ├── utils/
-│   │   └── sign.ts               # SHA-256 signing (ported from frontend)
+│   │   └── sign.ts           # SHA-256 signing (ported from frontend)
 │   ├── types/
-│   │   ├── task.ts               # Task-related types
-│   │   └── feedback.ts           # Feedback/analysis types
+│   │   ├── task.ts           # Task-related types
+│   │   └── feedback.ts       # Feedback/analysis types
 │   └── tools/
-│       ├── index.ts              # Tool registry (19 tools)
+│       ├── index.ts          # Tool registry (19 tools)
 │       ├── getTaskTypes.ts       # listenme_get_task_types
 │       ├── createTask.ts         # listenme_create_task
 │       ├── updateTask.ts         # listenme_update_task
@@ -53,13 +61,46 @@ listenme-mcp-server/
 │       ├── getKeyInsights.ts
 │       ├── generateKeyInsights.ts
 │       └── updateFeedbackLog.ts
+├── dist/                     # Build output (gitignored)
+│   ├── server.js             # Single-file bundle (bun build)
+│   └── types/                # .d.ts declarations (tsc)
 ├── docs/
-│   ├── TOOLS.md                  # Full tool reference with call examples
-│   └── API-RESPONSES.md          # Actual API response samples
+│   ├── TOOLS.md              # Full tool reference with call examples
+│   └── API-RESPONSES.md      # Actual API response samples
 └── test/
-    ├── run-tests.sh              # Automated test suite
-    └── test-commands.md          # Manual test commands
+    ├── run-tests.sh          # Automated test suite
+    └── test-commands.md      # Manual test commands
 ```
+
+## npm Package
+
+- **Package name:** `@boxverse_ai/listenme-mcp-server`
+- **Registry:** https://www.npmjs.com/package/@boxverse_ai/listenme-mcp-server
+- **Bin commands:** `listenme-mcp-server`, `listenme-mcp` (both point to `dist/server.js`)
+- **Published files:** `dist/`, `README.md`, `LICENSE`
+- **Zero runtime deps** — everything bundled by `bun build`
+
+### CLI Subcommands
+
+```bash
+# Start MCP server (stdio, default)
+npx @boxverse_ai/listenme-mcp-server
+
+# Start MCP server (SSE transport)
+npx @boxverse_ai/listenme-mcp-server --sse
+
+# Initialize config file
+npx @boxverse_ai/listenme-mcp-server init <apiKey> <apiSecret> [walletBaseUrl] [aiBaseUrl]
+```
+
+### Publishing
+
+```bash
+# Build + publish (requires npm login + OTP)
+PATH="/home/chester/.bun/bin:$PATH" npm publish --otp=<code>
+```
+
+Bump version in both `package.json` and `src/index.ts` (McpServer version) before publishing.
 
 ## API Signing
 
@@ -83,7 +124,13 @@ All requests are signed using SHA-256, ported from the backend `SignUtil.signByS
 
 ## Configuration
 
-**Option 1: Environment variables** (take priority)
+**Option 1: `init` command** (recommended for first-time setup)
+```bash
+npx @boxverse_ai/listenme-mcp-server init <apiKey> <apiSecret>
+```
+Creates `~/.listenme/config.json` with default URLs and your credentials.
+
+**Option 2: Environment variables** (take priority over config file)
 ```bash
 LISTENME_WALLET_BASE_URL=https://api-wallet.boxtradex.io/wallet
 LISTENME_AI_BASE_URL=https://api-ai.boxtradex.io/ai
@@ -92,7 +139,7 @@ LISTENME_API_SECRET=<apiKeySecret>
 LISTENME_LANG=en
 ```
 
-**Option 2: Config file** at `~/.listenme/config.json`
+**Option 3: Config file** at `~/.listenme/config.json`
 ```json
 {
   "walletBaseUrl": "https://api-wallet.boxtradex.io/wallet",
@@ -105,25 +152,25 @@ LISTENME_LANG=en
 
 ## Claude Desktop / Cursor Integration
 
-Add to MCP client config:
+**Via npx (recommended):**
 ```json
 {
   "mcpServers": {
     "listenme": {
-      "command": "node",
-      "args": ["/home/chester/build-pc/listenme-mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@boxverse_ai/listenme-mcp-server"],
       "env": {
-        "LISTENME_WALLET_BASE_URL": "https://api-wallet.boxtradex.io/wallet",
-        "LISTENME_AI_BASE_URL": "https://api-ai.boxtradex.io/ai",
-        "LISTENME_API_KEY": "<your-key>",
-        "LISTENME_API_SECRET": "<your-secret>"
+        "LISTENME_API_KEY": "your-key",
+        "LISTENME_API_SECRET": "your-secret"
       }
     }
   }
 }
 ```
 
-Or with bun (no build step needed):
+If you've already run `init`, you can omit the `env` block.
+
+**Via local dev (bun, no build step):**
 ```json
 {
   "mcpServers": {
@@ -131,10 +178,24 @@ Or with bun (no build step needed):
       "command": "/home/chester/.bun/bin/bun",
       "args": ["run", "/home/chester/build-pc/listenme-mcp-server/src/index.ts"],
       "env": {
-        "LISTENME_WALLET_BASE_URL": "https://api-wallet.boxtradex.io/wallet",
-        "LISTENME_AI_BASE_URL": "https://api-ai.boxtradex.io/ai",
-        "LISTENME_API_KEY": "<your-key>",
-        "LISTENME_API_SECRET": "<your-secret>"
+        "LISTENME_API_KEY": "your-key",
+        "LISTENME_API_SECRET": "your-secret"
+      }
+    }
+  }
+}
+```
+
+**Via local build (node):**
+```json
+{
+  "mcpServers": {
+    "listenme": {
+      "command": "node",
+      "args": ["/home/chester/build-pc/listenme-mcp-server/dist/server.js"],
+      "env": {
+        "LISTENME_API_KEY": "your-key",
+        "LISTENME_API_SECRET": "your-secret"
       }
     }
   }
@@ -147,8 +208,9 @@ Or with bun (no build step needed):
 # Install dependencies
 /home/chester/.bun/bin/bun install   # or: npm install
 
-# Build
-npx tsc
+# Build (single-file bundle + type declarations)
+/home/chester/.bun/bin/bun run build
+# Equivalent to: bun build src/index.ts --outfile dist/server.js --target node && tsc --project tsconfig.build.json
 
 # Type check only
 npx tsc --noEmit
@@ -157,10 +219,11 @@ npx tsc --noEmit
 /home/chester/.bun/bin/bun run src/index.ts
 
 # Run built version
-node dist/index.js
+node dist/server.js
 
 # Run with SSE transport
-TRANSPORT=sse PORT=3001 node dist/index.js
+node dist/server.js --sse
+SSE_PORT=3001 node dist/server.js --sse
 ```
 
 ## MCP Tools (19 total)
@@ -213,21 +276,21 @@ TRANSPORT=sse PORT=3001 node dist/index.js
 ```bash
 # 1. Create
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"listenme_create_task","arguments":{"aiAgentId":69,"featureId":4,"taskTypeId":7,"name":"My Survey","parameters":{"domain":"https://listenme.boxverse.ai","productUrl":"https://example.com","explanation":"Product feedback","question":["What do you think?","Suggestions?"],"language":"en","recruitmentType":1}}}}\n' \
-  | timeout 20 node dist/index.js 2>/dev/null | tail -1 | python3 -m json.tool
+  | timeout 20 node dist/server.js 2>/dev/null | tail -1 | python3 -m json.tool
 # → "Task created successfully. Task ID: 172"
 
 # 2. Read
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"listenme_get_task_detail","arguments":{"aiAgentId":69,"featureId":4,"taskId":172,"scope":"user"}}}\n' \
-  | timeout 15 node dist/index.js 2>/dev/null | tail -1 | python3 -m json.tool
+  | timeout 15 node dist/server.js 2>/dev/null | tail -1 | python3 -m json.tool
 
 # 3. Update
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"listenme_update_task","arguments":{"aiAgentId":69,"featureId":4,"taskId":172,"taskTypeId":7,"name":"My Survey (Updated)","parameters":{"domain":"https://listenme.boxverse.ai","productUrl":"https://example.com/v2","explanation":"Updated","question":["What do you think?","Suggestions?","Would you recommend?"],"language":"en","recruitmentType":1}}}}\n' \
-  | timeout 20 node dist/index.js 2>/dev/null | tail -1 | python3 -m json.tool
+  | timeout 20 node dist/server.js 2>/dev/null | tail -1 | python3 -m json.tool
 # → "Task 172 updated successfully."
 
 # 4. Delete
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"listenme_delete_task","arguments":{"aiAgentId":69,"featureId":4,"taskId":172}}}\n' \
-  | timeout 15 node dist/index.js 2>/dev/null | tail -1 | python3 -m json.tool
+  | timeout 15 node dist/server.js 2>/dev/null | tail -1 | python3 -m json.tool
 # → "Task 172 deleted/cancelled successfully."
 ```
 
@@ -240,7 +303,7 @@ printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion
 
 ```bash
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n' \
-  | timeout 5 node dist/index.js 2>/dev/null \
+  | timeout 5 node dist/server.js 2>/dev/null \
   | tail -1 | python3 -c "
 import sys,json
 tools = json.loads(sys.stdin.read())['result']['tools']

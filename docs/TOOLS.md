@@ -34,12 +34,19 @@ When connected to Claude Desktop, Cursor, or any MCP client, tools are invoked v
 }
 ```
 
-To test manually from terminal:
+To test manually from terminal (via npx):
+```bash
+printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"TOOL_NAME","arguments":ARGS_JSON}}\n' \
+  | timeout 15 npx -y @boxverse_ai/listenme-mcp-server 2>/dev/null \
+  | tail -1 | python3 -m json.tool
+```
+
+Or from the local build:
 ```bash
 cd /home/chester/build-pc/listenme-mcp-server
 
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"TOOL_NAME","arguments":ARGS_JSON}}\n' \
-  | timeout 15 node dist/index.js 2>/dev/null \
+  | timeout 15 node dist/server.js 2>/dev/null \
   | tail -1 | python3 -m json.tool
 ```
 
@@ -69,7 +76,7 @@ Get available task types for an AI agent. For ListenME, featureId=4 and taskType
 
 **Terminal test:**
 ```bash
-printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"listenme_get_task_types","arguments":{"aiAgentId":69,"featureId":4}}}\n' | timeout 15 node dist/index.js 2>/dev/null | tail -1 | python3 -m json.tool
+printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"listenme_get_task_types","arguments":{"aiAgentId":69,"featureId":4}}}\n' | timeout 15 node dist/server.js 2>/dev/null | tail -1 | python3 -m json.tool
 ```
 
 **Returns:** Array of task type configurations including parameters, unlock conditions, pricing, and Flowise agent IDs.
@@ -902,16 +909,32 @@ Or config file at `~/.listenme/config.json`:
 
 ## Claude Desktop / Cursor Setup
 
-Add to MCP client config:
+**Via npx (recommended):**
+```json
+{
+  "mcpServers": {
+    "listenme": {
+      "command": "npx",
+      "args": ["-y", "@boxverse_ai/listenme-mcp-server"],
+      "env": {
+        "LISTENME_API_KEY": "your-key",
+        "LISTENME_API_SECRET": "your-secret"
+      }
+    }
+  }
+}
+```
+
+If you've already run `npx @boxverse_ai/listenme-mcp-server init <key> <secret>`, you can omit the `env` block.
+
+**Via local build:**
 ```json
 {
   "mcpServers": {
     "listenme": {
       "command": "node",
-      "args": ["/home/chester/build-pc/listenme-mcp-server/dist/index.js"],
+      "args": ["/home/chester/build-pc/listenme-mcp-server/dist/server.js"],
       "env": {
-        "LISTENME_WALLET_BASE_URL": "https://api-wallet.boxtradex.io/wallet",
-        "LISTENME_AI_BASE_URL": "https://api-ai.boxtradex.io/ai",
         "LISTENME_API_KEY": "your-key",
         "LISTENME_API_SECRET": "your-secret"
       }

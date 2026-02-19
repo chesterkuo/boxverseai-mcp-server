@@ -4,11 +4,20 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { createServer } from "http";
+import { initConfig } from "./auth/config.js";
 import { allTools } from "./tools/index.js";
+
+// Handle CLI subcommands
+const args = process.argv.slice(2);
+
+if (args[0] === "init") {
+  initConfig(args[1], args[2], args[3], args[4]);
+  process.exit(0);
+}
 
 const server = new McpServer({
   name: "listenme-mcp-server",
-  version: "1.0.0",
+  version: "0.1.1",
 });
 
 // Register all tools
@@ -28,10 +37,13 @@ for (const tool of allTools) {
 }
 
 // Transport setup
-const transport = process.env.TRANSPORT || "stdio";
+const useSSE =
+  args.includes("--sse") ||
+  process.env.SSE === "1" ||
+  process.env.TRANSPORT === "sse";
 
-if (transport === "sse") {
-  const PORT = parseInt(process.env.PORT || "3001", 10);
+if (useSSE) {
+  const PORT = parseInt(process.env.SSE_PORT || process.env.PORT || "3001", 10);
   let sseTransport: SSEServerTransport | null = null;
 
   const httpServer = createServer(async (req, res) => {

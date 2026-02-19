@@ -1,20 +1,45 @@
 {
-  "name": "listenme-mcp-server",
-  "version": "1.0.0",
-  "description": "MCP server for ListenME product research task management on Boxverse AI",
+  "name": "@boxverse_ai/listenme-mcp-server",
+  "version": "0.1.1",
+  "description": "MCP server for ListenME — product research task management via Boxverse AI",
   "type": "module",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "bun run src/index.ts"
+  "license": "MIT",
+  "author": "Boxverse AI",
+  "homepage": "https://boxverse.ai/listenme",
+  "engines": {
+    "node": ">=18"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
-    "zod": "^3.24.2"
+  "bin": {
+    "listenme-mcp-server": "dist/server.js",
+    "listenme-mcp": "dist/server.js"
+  },
+  "main": "./dist/server.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outfile dist/server.js --target node && tsc --project tsconfig.build.json",
+    "start": "node dist/server.js",
+    "dev": "bun run src/index.ts",
+    "prepublishOnly": "bun run build",
+    "prepack": "bun run build"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@types/node": "^22.13.4",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "zod": "^3.24.2"
   }
 }

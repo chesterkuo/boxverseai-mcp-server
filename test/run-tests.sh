@@ -7,7 +7,7 @@
 #
 # Prerequisites:
 #   - ~/.listenme/config.json configured with valid API credentials
-#   - node dist/index.js must be built (run: npx tsc)
+#   - node dist/server.js must be built (run: bun run build)
 #
 # Examples:
 #   ./test/run-tests.sh 24          # Test with agentId=24, auto-discover taskId
@@ -19,7 +19,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
-SERVER="node $PROJECT_DIR/dist/index.js"
+SERVER="node $PROJECT_DIR/dist/server.js"
 
 AGENT_ID="${1:-24}"
 TASK_ID="${2:-}"
